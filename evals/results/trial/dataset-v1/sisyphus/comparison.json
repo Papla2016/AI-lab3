@@ -1,0 +1,490 @@
+{
+  "config_a": {
+    "dataset_sha256": "ced723f79bca700ebc1fc433c132f9c4d72e7dbf337dcf731a0c2016ac2993eb",
+    "index_sha256": "dba415df26b61d3d68cfdd67abda7794c6e25d93569b9cc9fc0b66f3713cc2da",
+    "prompts_sha256": "3fa9386d3e6a83024f8c2a4b100121808be5d0db5cc4f6af3985f07e280bcd49",
+    "implementation_sha256": "fe48d64b59a8bc24f60f919337128b2aaac1050f5a8b35f8a4e12ab635891249",
+    "collection": "rag_lab1",
+    "embedding_model": "intfloat/multilingual-e5-small",
+    "chunk_size": 1000,
+    "chunk_overlap": 150,
+    "retrieval_mode": "hybrid",
+    "top_n": 12,
+    "top_k": 1,
+    "rerank_model": null,
+    "rrf_k": 60,
+    "min_dense_score": 0.2,
+    "llm_model": "qwen2.5-1.5b-instruct-q4_k_m",
+    "endpoint_sha256": "89caf70a6a58a082c8bd16cc0a4ad72d0a2ab0a8d0f495421057ebb5ce6460ee",
+    "temperature": 0,
+    "judge_model": "qwen2.5-1.5b-instruct-q4_k_m",
+    "judge_version": "judge-v1",
+    "judge_sha256": "a2c8c0b986d49f1f402a175472deafa1920663a01d1920a13981072fcb811342",
+    "strategy": "zero_shot"
+  },
+  "config_b": {
+    "dataset_sha256": "ced723f79bca700ebc1fc433c132f9c4d72e7dbf337dcf731a0c2016ac2993eb",
+    "index_sha256": "dba415df26b61d3d68cfdd67abda7794c6e25d93569b9cc9fc0b66f3713cc2da",
+    "prompts_sha256": "3fa9386d3e6a83024f8c2a4b100121808be5d0db5cc4f6af3985f07e280bcd49",
+    "implementation_sha256": "fe48d64b59a8bc24f60f919337128b2aaac1050f5a8b35f8a4e12ab635891249",
+    "collection": "rag_lab1",
+    "embedding_model": "intfloat/multilingual-e5-small",
+    "chunk_size": 1000,
+    "chunk_overlap": 150,
+    "retrieval_mode": "hybrid",
+    "top_n": 12,
+    "top_k": 1,
+    "rerank_model": null,
+    "rrf_k": 60,
+    "min_dense_score": 0.2,
+    "llm_model": "qwen2.5-1.5b-instruct-q4_k_m",
+    "endpoint_sha256": "89caf70a6a58a082c8bd16cc0a4ad72d0a2ab0a8d0f495421057ebb5ce6460ee",
+    "temperature": 0,
+    "judge_model": "qwen2.5-1.5b-instruct-q4_k_m",
+    "judge_version": "judge-v1",
+    "judge_sha256": "a2c8c0b986d49f1f402a175472deafa1920663a01d1920a13981072fcb811342",
+    "strategy": "few_shot"
+  },
+  "complete_a": false,
+  "complete_b": false,
+  "selected_ids": [
+    1,
+    2,
+    3
+  ],
+  "metrics": [
+    {
+      "category": "all",
+      "metric": "Faithfulness",
+      "a": 0.9166666666666666,
+      "b": 1.0,
+      "b_minus_a": 0.08333333333333337,
+      "n_a": 3,
+      "n_b": 3
+    },
+    {
+      "category": "all",
+      "metric": "Answer Relevancy",
+      "a": 0.9166666666666666,
+      "b": 0.8333333333333334,
+      "b_minus_a": -0.08333333333333326,
+      "n_a": 3,
+      "n_b": 3
+    },
+    {
+      "category": "all",
+      "metric": "Correctness",
+      "a": 1.0,
+      "b": 1.0,
+      "b_minus_a": 0.0,
+      "n_a": 3,
+      "n_b": 3
+    },
+    {
+      "category": "all",
+      "metric": "Completeness",
+      "a": 1.0,
+      "b": 0.8333333333333334,
+      "b_minus_a": -0.16666666666666663,
+      "n_a": 3,
+      "n_b": 3
+    },
+    {
+      "category": "all",
+      "metric": "Hit@5",
+      "a": 1.0,
+      "b": 1.0,
+      "b_minus_a": 0.0,
+      "n_a": 3,
+      "n_b": 3
+    },
+    {
+      "category": "all",
+      "metric": "Context Precision",
+      "a": 1.0,
+      "b": 1.0,
+      "b_minus_a": 0.0,
+      "n_a": 3,
+      "n_b": 3
+    },
+    {
+      "category": "all",
+      "metric": "Context Recall",
+      "a": 1.0,
+      "b": 1.0,
+      "b_minus_a": 0.0,
+      "n_a": 3,
+      "n_b": 3
+    },
+    {
+      "category": "all",
+      "metric": "Refusal Accuracy",
+      "a": null,
+      "b": null,
+      "b_minus_a": null,
+      "n_a": 0,
+      "n_b": 0
+    },
+    {
+      "category": "all",
+      "metric": "False Refusal Rate",
+      "a": 0.0,
+      "b": 0.0,
+      "b_minus_a": 0.0,
+      "n_a": 3,
+      "n_b": 3
+    },
+    {
+      "category": "all",
+      "metric": "Citation Validity",
+      "a": 1.0,
+      "b": 1.0,
+      "b_minus_a": 0.0,
+      "n_a": 3,
+      "n_b": 3
+    },
+    {
+      "category": "all",
+      "metric": "Injection Resistance",
+      "a": null,
+      "b": null,
+      "b_minus_a": null,
+      "n_a": 0,
+      "n_b": 0
+    },
+    {
+      "category": "all",
+      "metric": "Среднее время ответа, с",
+      "a": 6.068719927666621,
+      "b": 8.750670227999914,
+      "b_minus_a": 2.681950300333293,
+      "n_a": 3,
+      "n_b": 3
+    },
+    {
+      "category": "in_corpus",
+      "metric": "Faithfulness",
+      "a": 0.9166666666666666,
+      "b": 1.0,
+      "b_minus_a": 0.08333333333333337,
+      "n_a": 3,
+      "n_b": 3
+    },
+    {
+      "category": "in_corpus",
+      "metric": "Answer Relevancy",
+      "a": 0.9166666666666666,
+      "b": 0.8333333333333334,
+      "b_minus_a": -0.08333333333333326,
+      "n_a": 3,
+      "n_b": 3
+    },
+    {
+      "category": "in_corpus",
+      "metric": "Correctness",
+      "a": 1.0,
+      "b": 1.0,
+      "b_minus_a": 0.0,
+      "n_a": 3,
+      "n_b": 3
+    },
+    {
+      "category": "in_corpus",
+      "metric": "Completeness",
+      "a": 1.0,
+      "b": 0.8333333333333334,
+      "b_minus_a": -0.16666666666666663,
+      "n_a": 3,
+      "n_b": 3
+    },
+    {
+      "category": "in_corpus",
+      "metric": "Hit@5",
+      "a": 1.0,
+      "b": 1.0,
+      "b_minus_a": 0.0,
+      "n_a": 3,
+      "n_b": 3
+    },
+    {
+      "category": "in_corpus",
+      "metric": "Context Precision",
+      "a": 1.0,
+      "b": 1.0,
+      "b_minus_a": 0.0,
+      "n_a": 3,
+      "n_b": 3
+    },
+    {
+      "category": "in_corpus",
+      "metric": "Context Recall",
+      "a": 1.0,
+      "b": 1.0,
+      "b_minus_a": 0.0,
+      "n_a": 3,
+      "n_b": 3
+    },
+    {
+      "category": "in_corpus",
+      "metric": "Refusal Accuracy",
+      "a": null,
+      "b": null,
+      "b_minus_a": null,
+      "n_a": 0,
+      "n_b": 0
+    },
+    {
+      "category": "in_corpus",
+      "metric": "False Refusal Rate",
+      "a": 0.0,
+      "b": 0.0,
+      "b_minus_a": 0.0,
+      "n_a": 3,
+      "n_b": 3
+    },
+    {
+      "category": "in_corpus",
+      "metric": "Citation Validity",
+      "a": 1.0,
+      "b": 1.0,
+      "b_minus_a": 0.0,
+      "n_a": 3,
+      "n_b": 3
+    },
+    {
+      "category": "in_corpus",
+      "metric": "Injection Resistance",
+      "a": null,
+      "b": null,
+      "b_minus_a": null,
+      "n_a": 0,
+      "n_b": 0
+    },
+    {
+      "category": "in_corpus",
+      "metric": "Среднее время ответа, с",
+      "a": 6.068719927666621,
+      "b": 8.750670227999914,
+      "b_minus_a": 2.681950300333293,
+      "n_a": 3,
+      "n_b": 3
+    },
+    {
+      "category": "out_of_corpus",
+      "metric": "Faithfulness",
+      "a": null,
+      "b": null,
+      "b_minus_a": null,
+      "n_a": 0,
+      "n_b": 0
+    },
+    {
+      "category": "out_of_corpus",
+      "metric": "Answer Relevancy",
+      "a": null,
+      "b": null,
+      "b_minus_a": null,
+      "n_a": 0,
+      "n_b": 0
+    },
+    {
+      "category": "out_of_corpus",
+      "metric": "Correctness",
+      "a": null,
+      "b": null,
+      "b_minus_a": null,
+      "n_a": 0,
+      "n_b": 0
+    },
+    {
+      "category": "out_of_corpus",
+      "metric": "Completeness",
+      "a": null,
+      "b": null,
+      "b_minus_a": null,
+      "n_a": 0,
+      "n_b": 0
+    },
+    {
+      "category": "out_of_corpus",
+      "metric": "Hit@5",
+      "a": null,
+      "b": null,
+      "b_minus_a": null,
+      "n_a": 0,
+      "n_b": 0
+    },
+    {
+      "category": "out_of_corpus",
+      "metric": "Context Precision",
+      "a": null,
+      "b": null,
+      "b_minus_a": null,
+      "n_a": 0,
+      "n_b": 0
+    },
+    {
+      "category": "out_of_corpus",
+      "metric": "Context Recall",
+      "a": null,
+      "b": null,
+      "b_minus_a": null,
+      "n_a": 0,
+      "n_b": 0
+    },
+    {
+      "category": "out_of_corpus",
+      "metric": "Refusal Accuracy",
+      "a": null,
+      "b": null,
+      "b_minus_a": null,
+      "n_a": 0,
+      "n_b": 0
+    },
+    {
+      "category": "out_of_corpus",
+      "metric": "False Refusal Rate",
+      "a": null,
+      "b": null,
+      "b_minus_a": null,
+      "n_a": 0,
+      "n_b": 0
+    },
+    {
+      "category": "out_of_corpus",
+      "metric": "Citation Validity",
+      "a": null,
+      "b": null,
+      "b_minus_a": null,
+      "n_a": 0,
+      "n_b": 0
+    },
+    {
+      "category": "out_of_corpus",
+      "metric": "Injection Resistance",
+      "a": null,
+      "b": null,
+      "b_minus_a": null,
+      "n_a": 0,
+      "n_b": 0
+    },
+    {
+      "category": "out_of_corpus",
+      "metric": "Среднее время ответа, с",
+      "a": null,
+      "b": null,
+      "b_minus_a": null,
+      "n_a": 0,
+      "n_b": 0
+    },
+    {
+      "category": "ambiguous",
+      "metric": "Faithfulness",
+      "a": null,
+      "b": null,
+      "b_minus_a": null,
+      "n_a": 0,
+      "n_b": 0
+    },
+    {
+      "category": "ambiguous",
+      "metric": "Answer Relevancy",
+      "a": null,
+      "b": null,
+      "b_minus_a": null,
+      "n_a": 0,
+      "n_b": 0
+    },
+    {
+      "category": "ambiguous",
+      "metric": "Correctness",
+      "a": null,
+      "b": null,
+      "b_minus_a": null,
+      "n_a": 0,
+      "n_b": 0
+    },
+    {
+      "category": "ambiguous",
+      "metric": "Completeness",
+      "a": null,
+      "b": null,
+      "b_minus_a": null,
+      "n_a": 0,
+      "n_b": 0
+    },
+    {
+      "category": "ambiguous",
+      "metric": "Hit@5",
+      "a": null,
+      "b": null,
+      "b_minus_a": null,
+      "n_a": 0,
+      "n_b": 0
+    },
+    {
+      "category": "ambiguous",
+      "metric": "Context Precision",
+      "a": null,
+      "b": null,
+      "b_minus_a": null,
+      "n_a": 0,
+      "n_b": 0
+    },
+    {
+      "category": "ambiguous",
+      "metric": "Context Recall",
+      "a": null,
+      "b": null,
+      "b_minus_a": null,
+      "n_a": 0,
+      "n_b": 0
+    },
+    {
+      "category": "ambiguous",
+      "metric": "Refusal Accuracy",
+      "a": null,
+      "b": null,
+      "b_minus_a": null,
+      "n_a": 0,
+      "n_b": 0
+    },
+    {
+      "category": "ambiguous",
+      "metric": "False Refusal Rate",
+      "a": null,
+      "b": null,
+      "b_minus_a": null,
+      "n_a": 0,
+      "n_b": 0
+    },
+    {
+      "category": "ambiguous",
+      "metric": "Citation Validity",
+      "a": null,
+      "b": null,
+      "b_minus_a": null,
+      "n_a": 0,
+      "n_b": 0
+    },
+    {
+      "category": "ambiguous",
+      "metric": "Injection Resistance",
+      "a": null,
+      "b": null,
+      "b_minus_a": null,
+      "n_a": 0,
+      "n_b": 0
+    },
+    {
+      "category": "ambiguous",
+      "metric": "Среднее время ответа, с",
+      "a": null,
+      "b": null,
+      "b_minus_a": null,
+      "n_a": 0,
+      "n_b": 0
+    }
+  ],
+  "conclusion": null
+}

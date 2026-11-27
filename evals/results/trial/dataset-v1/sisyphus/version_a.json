@@ -1,0 +1,460 @@
+{
+  "schema_version": 1,
+  "config": {
+    "dataset_sha256": "ced723f79bca700ebc1fc433c132f9c4d72e7dbf337dcf731a0c2016ac2993eb",
+    "index_sha256": "dba415df26b61d3d68cfdd67abda7794c6e25d93569b9cc9fc0b66f3713cc2da",
+    "prompts_sha256": "3fa9386d3e6a83024f8c2a4b100121808be5d0db5cc4f6af3985f07e280bcd49",
+    "implementation_sha256": "fe48d64b59a8bc24f60f919337128b2aaac1050f5a8b35f8a4e12ab635891249",
+    "collection": "rag_lab1",
+    "embedding_model": "intfloat/multilingual-e5-small",
+    "chunk_size": 1000,
+    "chunk_overlap": 150,
+    "retrieval_mode": "hybrid",
+    "top_n": 12,
+    "top_k": 1,
+    "rerank_model": null,
+    "rrf_k": 60,
+    "min_dense_score": 0.2,
+    "llm_model": "qwen2.5-1.5b-instruct-q4_k_m",
+    "endpoint_sha256": "89caf70a6a58a082c8bd16cc0a4ad72d0a2ab0a8d0f495421057ebb5ce6460ee",
+    "temperature": 0,
+    "judge_model": "qwen2.5-1.5b-instruct-q4_k_m",
+    "judge_version": "judge-v1",
+    "judge_sha256": "a2c8c0b986d49f1f402a175472deafa1920663a01d1920a13981072fcb811342",
+    "strategy": "zero_shot"
+  },
+  "dataset_size": 100,
+  "selected_ids": [
+    1,
+    2,
+    3
+  ],
+  "limited": true,
+  "rows": [
+    {
+      "example": {
+        "id": 1,
+        "question": "Как часто в документации обновляется банк программ Sisyphus?",
+        "ground_truth": "Sisyphus обновляется ежедневно.",
+        "expected_sources": [
+          "3.2. Сизиф.pdf"
+        ],
+        "source_groups": [],
+        "type": "in_corpus",
+        "tags": [
+          "sisyphus",
+          "exact_fact"
+        ],
+        "ambiguous_behavior": null
+      },
+      "retrieved": [
+        {
+          "source": "3.2. Сизиф.pdf",
+          "chunk_id": "eb5368291494db2f",
+          "page": 1,
+          "text": "3.2. Сизиф\nSisyphus (https://packages.altlinux.org) — наш ежедневно\nобновляемый банк программ (часто называемый\nрепозиторием). Поддерживаемая ALT Linux Team\nцелостность Sisyphus, оригинальная технология сборки\nпрограмм и утилита apt-get позволяют\nпользователям легко обновлять свои системы и быть в\nкурсе актуальных новинок мира свободных программ.\nЕжедневно изменяющийся репозиторий содержит\nсамое новое программное обеспечение со всеми его\nпреимуществами и недостатками (иногда ещё\nнеизвестными). Поэтому, перед обновлением вашей\nсистемы из Sisyphus, мы советуем взвесить\nпреимущества новых возможностей, реализованных в\nпоследних версиях программ, и вероятность\nвозникновения неожиданностей в работе с ними\n(https://www.altlinux.org/Sisyphus_changes).\nРазработка Sisyphus полностью открыта. У нас нет\nсекретных изменений кода и закрытого тестирования с\nподписками о неразглашении. Всё, что мы сделали\nсегодня, завтра вы найдёте в сети. По сравнению с\nдругими аналогичными банками программ (Debian",
+          "score": 0.03278688524590164
+        }
+      ],
+      "context": [
+        {
+          "source": "3.2. Сизиф.pdf",
+          "chunk_id": "eb5368291494db2f",
+          "page": 1,
+          "text": "3.2. Сизиф\nSisyphus (https://packages.altlinux.org) — наш ежедневно\nобновляемый банк программ (часто называемый\nрепозиторием). Поддерживаемая ALT Linux Team\nцелостность Sisyphus, оригинальная технология сборки\nпрограмм и утилита apt-get позволяют\nпользователям легко обновлять свои системы и быть в\nкурсе актуальных новинок мира свободных программ.\nЕжедневно изменяющийся репозиторий содержит\nсамое новое программное обеспечение со всеми его\nпреимуществами и недостатками (иногда ещё\nнеизвестными). Поэтому, перед обновлением вашей\nсистемы из Sisyphus, мы советуем взвесить\nпреимущества новых возможностей, реализованных в\nпоследних версиях программ, и вероятность\nвозникновения неожиданностей в работе с ними\n(https://www.altlinux.org/Sisyphus_changes).\nРазработка Sisyphus полностью открыта. У нас нет\nсекретных изменений кода и закрытого тестирования с\nподписками о неразглашении. Всё, что мы сделали\nсегодня, завтра вы найдёте в сети. По сравнению с\nдругими аналогичными банками программ (Debian",
+          "score": 0.03278688524590164
+        }
+      ],
+      "answer": {
+        "answer": "3.2. Сизиф",
+        "citations": [
+          {
+            "source": "3.2. Сизиф.pdf",
+            "chunk_id": "eb5368291494db2f"
+          }
+        ],
+        "confidence": "high",
+        "insufficient_context": false
+      },
+      "judge": {
+        "faithfulness": 5,
+        "answer_relevancy": 5,
+        "correctness": 5,
+        "completeness": 5,
+        "justification": "The answer directly addresses the question based on the context and the given fact. It provides a clear and accurate response to the question about the frequency of Sisyphus's updates."
+      },
+      "injection_mode": null,
+      "injection_chunk_id": null,
+      "injection_context": [],
+      "injection_answer": null,
+      "answer_seconds": 9.69926420399986,
+      "elapsed_seconds": 18.29283806000001,
+      "errors": {},
+      "metrics": {
+        "faithfulness": 1.0,
+        "answer_relevancy": 1.0,
+        "correctness": 1.0,
+        "completeness": 1.0,
+        "hit_at_5": 1.0,
+        "context_precision": 1.0,
+        "context_recall": 1.0,
+        "refusal_accuracy": null,
+        "false_refusal_rate": 0.0,
+        "citation_validity": 1.0,
+        "injection_resistance": null,
+        "answer_seconds": 9.69926420399986
+      }
+    },
+    {
+      "example": {
+        "id": 2,
+        "question": "Какой компромисс нужно учитывать перед обновлением системы из Sisyphus?",
+        "ground_truth": "Взвесить пользу новых возможностей и риск неожиданностей в работе свежих версий программ.",
+        "expected_sources": [
+          "3.2. Сизиф.pdf"
+        ],
+        "source_groups": [],
+        "type": "in_corpus",
+        "tags": [
+          "sisyphus",
+          "documentation"
+        ],
+        "ambiguous_behavior": null
+      },
+      "retrieved": [
+        {
+          "source": "3.2. Сизиф.pdf",
+          "chunk_id": "eb5368291494db2f",
+          "page": 1,
+          "text": "3.2. Сизиф\nSisyphus (https://packages.altlinux.org) — наш ежедневно\nобновляемый банк программ (часто называемый\nрепозиторием). Поддерживаемая ALT Linux Team\nцелостность Sisyphus, оригинальная технология сборки\nпрограмм и утилита apt-get позволяют\nпользователям легко обновлять свои системы и быть в\nкурсе актуальных новинок мира свободных программ.\nЕжедневно изменяющийся репозиторий содержит\nсамое новое программное обеспечение со всеми его\nпреимуществами и недостатками (иногда ещё\nнеизвестными). Поэтому, перед обновлением вашей\nсистемы из Sisyphus, мы советуем взвесить\nпреимущества новых возможностей, реализованных в\nпоследних версиях программ, и вероятность\nвозникновения неожиданностей в работе с ними\n(https://www.altlinux.org/Sisyphus_changes).\nРазработка Sisyphus полностью открыта. У нас нет\nсекретных изменений кода и закрытого тестирования с\nподписками о неразглашении. Всё, что мы сделали\nсегодня, завтра вы найдёте в сети. По сравнению с\nдругими аналогичными банками программ (Debian",
+          "score": 0.03252247488101534
+        }
+      ],
+      "context": [
+        {
+          "source": "3.2. Сизиф.pdf",
+          "chunk_id": "eb5368291494db2f",
+          "page": 1,
+          "text": "3.2. Сизиф\nSisyphus (https://packages.altlinux.org) — наш ежедневно\nобновляемый банк программ (часто называемый\nрепозиторием). Поддерживаемая ALT Linux Team\nцелостность Sisyphus, оригинальная технология сборки\nпрограмм и утилита apt-get позволяют\nпользователям легко обновлять свои системы и быть в\nкурсе актуальных новинок мира свободных программ.\nЕжедневно изменяющийся репозиторий содержит\nсамое новое программное обеспечение со всеми его\nпреимуществами и недостатками (иногда ещё\nнеизвестными). Поэтому, перед обновлением вашей\nсистемы из Sisyphus, мы советуем взвесить\nпреимущества новых возможностей, реализованных в\nпоследних версиях программ, и вероятность\nвозникновения неожиданностей в работе с ними\n(https://www.altlinux.org/Sisyphus_changes).\nРазработка Sisyphus полностью открыта. У нас нет\nсекретных изменений кода и закрытого тестирования с\nподписками о неразглашении. Всё, что мы сделали\nсегодня, завтра вы найдёте в сети. По сравнению с\nдругими аналогичными банками программ (Debian",
+          "score": 0.03252247488101534
+        }
+      ],
+      "answer": {
+        "answer": "При обновлении системы из Sisyphus, пользователи должны взвесить преимущества новых возможностей, реализованных в последних версиях программ, и вероятность возникновения неожиданностей в работе с ними.",
+        "citations": [
+          {
+            "source": "3.2. Сизиф.pdf",
+            "chunk_id": "eb5368291494db2f"
+          }
+        ],
+        "confidence": "low",
+        "insufficient_context": false
+      },
+      "judge": {
+        "faithfulness": 4,
+        "answer_relevancy": 4,
+        "correctness": 5,
+        "completeness": 5,
+        "justification": "The answer directly addresses the question by providing a rationale for weighing the benefits of new features in Sisyphus against the risks of unexpected issues. It also aligns with the provided context and the ground truth, ensuring all relevant information is included."
+      },
+      "injection_mode": null,
+      "injection_chunk_id": null,
+      "injection_context": [],
+      "injection_answer": null,
+      "answer_seconds": 5.1872826849999,
+      "elapsed_seconds": 15.024109289999956,
+      "errors": {},
+      "metrics": {
+        "faithfulness": 0.75,
+        "answer_relevancy": 0.75,
+        "correctness": 1.0,
+        "completeness": 1.0,
+        "hit_at_5": 1.0,
+        "context_precision": 1.0,
+        "context_recall": 1.0,
+        "refusal_accuracy": null,
+        "false_refusal_rate": 0.0,
+        "citation_validity": 1.0,
+        "injection_resistance": null,
+        "answer_seconds": 5.1872826849999
+      }
+    },
+    {
+      "example": {
+        "id": 3,
+        "question": "Проводится ли разработка Sisyphus за закрытыми дверями с тестированием под NDA?",
+        "ground_truth": "Нет. Разработка полностью открыта, без секретных изменений кода и закрытого тестирования по NDA.",
+        "expected_sources": [
+          "3.2. Сизиф.pdf"
+        ],
+        "source_groups": [],
+        "type": "in_corpus",
+        "tags": [
+          "sisyphus",
+          "trap"
+        ],
+        "ambiguous_behavior": null
+      },
+      "retrieved": [
+        {
+          "source": "3.2. Сизиф.pdf",
+          "chunk_id": "eb5368291494db2f",
+          "page": 1,
+          "text": "3.2. Сизиф\nSisyphus (https://packages.altlinux.org) — наш ежедневно\nобновляемый банк программ (часто называемый\nрепозиторием). Поддерживаемая ALT Linux Team\nцелостность Sisyphus, оригинальная технология сборки\nпрограмм и утилита apt-get позволяют\nпользователям легко обновлять свои системы и быть в\nкурсе актуальных новинок мира свободных программ.\nЕжедневно изменяющийся репозиторий содержит\nсамое новое программное обеспечение со всеми его\nпреимуществами и недостатками (иногда ещё\nнеизвестными). Поэтому, перед обновлением вашей\nсистемы из Sisyphus, мы советуем взвесить\nпреимущества новых возможностей, реализованных в\nпоследних версиях программ, и вероятность\nвозникновения неожиданностей в работе с ними\n(https://www.altlinux.org/Sisyphus_changes).\nРазработка Sisyphus полностью открыта. У нас нет\nсекретных изменений кода и закрытого тестирования с\nподписками о неразглашении. Всё, что мы сделали\nсегодня, завтра вы найдёте в сети. По сравнению с\nдругими аналогичными банками программ (Debian",
+          "score": 0.03252247488101534
+        }
+      ],
+      "context": [
+        {
+          "source": "3.2. Сизиф.pdf",
+          "chunk_id": "eb5368291494db2f",
+          "page": 1,
+          "text": "3.2. Сизиф\nSisyphus (https://packages.altlinux.org) — наш ежедневно\nобновляемый банк программ (часто называемый\nрепозиторием). Поддерживаемая ALT Linux Team\nцелостность Sisyphus, оригинальная технология сборки\nпрограмм и утилита apt-get позволяют\nпользователям легко обновлять свои системы и быть в\nкурсе актуальных новинок мира свободных программ.\nЕжедневно изменяющийся репозиторий содержит\nсамое новое программное обеспечение со всеми его\nпреимуществами и недостатками (иногда ещё\nнеизвестными). Поэтому, перед обновлением вашей\nсистемы из Sisyphus, мы советуем взвесить\nпреимущества новых возможностей, реализованных в\nпоследних версиях программ, и вероятность\nвозникновения неожиданностей в работе с ними\n(https://www.altlinux.org/Sisyphus_changes).\nРазработка Sisyphus полностью открыта. У нас нет\nсекретных изменений кода и закрытого тестирования с\nподписками о неразглашении. Всё, что мы сделали\nсегодня, завтра вы найдёте в сети. По сравнению с\nдругими аналогичными банками программ (Debian",
+          "score": 0.03252247488101534
+        }
+      ],
+      "answer": {
+        "answer": "Нет",
+        "citations": [
+          {
+            "source": "3.2. Сизиф.pdf",
+            "chunk_id": "eb5368291494db2f"
+          }
+        ],
+        "confidence": "high",
+        "insufficient_context": false
+      },
+      "judge": {
+        "faithfulness": 5,
+        "answer_relevancy": 5,
+        "correctness": 5,
+        "completeness": 5,
+        "justification": "The answer directly addresses the question based on the provided context and aligns with the given ground truth. The context confirms that Sisyphus is a fully open repository with no secret changes in the code and no closed testing with NDAs."
+      },
+      "injection_mode": null,
+      "injection_chunk_id": null,
+      "injection_context": [],
+      "injection_answer": null,
+      "answer_seconds": 3.3196128940001017,
+      "elapsed_seconds": 12.73576608299993,
+      "errors": {},
+      "metrics": {
+        "faithfulness": 1.0,
+        "answer_relevancy": 1.0,
+        "correctness": 1.0,
+        "completeness": 1.0,
+        "hit_at_5": 1.0,
+        "context_precision": 1.0,
+        "context_recall": 1.0,
+        "refusal_accuracy": null,
+        "false_refusal_rate": 0.0,
+        "citation_validity": 1.0,
+        "injection_resistance": null,
+        "answer_seconds": 3.3196128940001017
+      }
+    }
+  ],
+  "complete": false,
+  "summary": {
+    "faithfulness": {
+      "mean": 0.9166666666666666,
+      "n": 3
+    },
+    "answer_relevancy": {
+      "mean": 0.9166666666666666,
+      "n": 3
+    },
+    "correctness": {
+      "mean": 1.0,
+      "n": 3
+    },
+    "completeness": {
+      "mean": 1.0,
+      "n": 3
+    },
+    "hit_at_5": {
+      "mean": 1.0,
+      "n": 3
+    },
+    "context_precision": {
+      "mean": 1.0,
+      "n": 3
+    },
+    "context_recall": {
+      "mean": 1.0,
+      "n": 3
+    },
+    "refusal_accuracy": {
+      "mean": null,
+      "n": 0
+    },
+    "false_refusal_rate": {
+      "mean": 0.0,
+      "n": 3
+    },
+    "citation_validity": {
+      "mean": 1.0,
+      "n": 3
+    },
+    "injection_resistance": {
+      "mean": null,
+      "n": 0
+    },
+    "answer_seconds": {
+      "mean": 6.068719927666621,
+      "n": 3
+    }
+  },
+  "by_category": {
+    "in_corpus": {
+      "faithfulness": {
+        "mean": 0.9166666666666666,
+        "n": 3
+      },
+      "answer_relevancy": {
+        "mean": 0.9166666666666666,
+        "n": 3
+      },
+      "correctness": {
+        "mean": 1.0,
+        "n": 3
+      },
+      "completeness": {
+        "mean": 1.0,
+        "n": 3
+      },
+      "hit_at_5": {
+        "mean": 1.0,
+        "n": 3
+      },
+      "context_precision": {
+        "mean": 1.0,
+        "n": 3
+      },
+      "context_recall": {
+        "mean": 1.0,
+        "n": 3
+      },
+      "refusal_accuracy": {
+        "mean": null,
+        "n": 0
+      },
+      "false_refusal_rate": {
+        "mean": 0.0,
+        "n": 3
+      },
+      "citation_validity": {
+        "mean": 1.0,
+        "n": 3
+      },
+      "injection_resistance": {
+        "mean": null,
+        "n": 0
+      },
+      "answer_seconds": {
+        "mean": 6.068719927666621,
+        "n": 3
+      }
+    },
+    "out_of_corpus": {
+      "faithfulness": {
+        "mean": null,
+        "n": 0
+      },
+      "answer_relevancy": {
+        "mean": null,
+        "n": 0
+      },
+      "correctness": {
+        "mean": null,
+        "n": 0
+      },
+      "completeness": {
+        "mean": null,
+        "n": 0
+      },
+      "hit_at_5": {
+        "mean": null,
+        "n": 0
+      },
+      "context_precision": {
+        "mean": null,
+        "n": 0
+      },
+      "context_recall": {
+        "mean": null,
+        "n": 0
+      },
+      "refusal_accuracy": {
+        "mean": null,
+        "n": 0
+      },
+      "false_refusal_rate": {
+        "mean": null,
+        "n": 0
+      },
+      "citation_validity": {
+        "mean": null,
+        "n": 0
+      },
+      "injection_resistance": {
+        "mean": null,
+        "n": 0
+      },
+      "answer_seconds": {
+        "mean": null,
+        "n": 0
+      }
+    },
+    "ambiguous": {
+      "faithfulness": {
+        "mean": null,
+        "n": 0
+      },
+      "answer_relevancy": {
+        "mean": null,
+        "n": 0
+      },
+      "correctness": {
+        "mean": null,
+        "n": 0
+      },
+      "completeness": {
+        "mean": null,
+        "n": 0
+      },
+      "hit_at_5": {
+        "mean": null,
+        "n": 0
+      },
+      "context_precision": {
+        "mean": null,
+        "n": 0
+      },
+      "context_recall": {
+        "mean": null,
+        "n": 0
+      },
+      "refusal_accuracy": {
+        "mean": null,
+        "n": 0
+      },
+      "false_refusal_rate": {
+        "mean": null,
+        "n": 0
+      },
+      "citation_validity": {
+        "mean": null,
+        "n": 0
+      },
+      "injection_resistance": {
+        "mean": null,
+        "n": 0
+      },
+      "answer_seconds": {
+        "mean": null,
+        "n": 0
+      }
+    }
+  }
+}
