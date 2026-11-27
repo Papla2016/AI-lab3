@@ -4,6 +4,8 @@ from typing import Literal
 from pydantic import Field, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+from .llm import DEFAULT_REQUESTS_PER_MINUTE
+
 ROOT = Path(__file__).resolve().parents[1]
 
 class Settings(BaseSettings):
@@ -23,8 +25,9 @@ class Settings(BaseSettings):
     rerank_enabled: bool = False
     rerank_model: str = "cross-encoder/ms-marco-MiniLM-L-6-v2"
     llm_base_url: str = "http://localhost:11434/v1"
-    llm_api_key: str = "ollama"
+    llm_api_key: str = Field(default="ollama", repr=False)
     llm_model: str = "qwen2.5:7b"
+    llm_requests_per_minute: int = Field(DEFAULT_REQUESTS_PER_MINUTE, ge=1)
     judge_base_url: str | None = None
     judge_api_key: str | None = Field(default=None, repr=False)
     judge_model: str | None = None
