@@ -4,6 +4,8 @@ Only stable exception class names and HTTP status codes are displayed.
 Never print provider exception messages verbatim: they may contain secrets.
 """
 
+from .llm import LLMRateLimitExceeded
+
 HINTS = {
     400: "Некорректный запрос к модели. Проверьте поддержку response_format, temperature и идентификатор модели.",
     401: "Ошибка авторизации. Проверьте LLM_API_KEY и провайдера API.",
@@ -29,6 +31,8 @@ CLASS_HINTS = {
 
 def describe_error(exc: Exception) -> str:
     """Return a bounded message; API error response bodies are never included."""
+    if isinstance(exc, LLMRateLimitExceeded):
+        return str(exc)
     name = type(exc).__name__
     status = getattr(exc, "status_code", None)
     if isinstance(status, int):

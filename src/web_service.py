@@ -59,7 +59,10 @@ class RAGLabService:
 
     @staticmethod
     def _default_llm(settings: Settings) -> LLM:
-        return OpenAICompatibleLLM(settings.llm_base_url, settings.llm_api_key, settings.llm_model)
+        return OpenAICompatibleLLM(
+            settings.llm_base_url, settings.llm_api_key, settings.llm_model,
+            requests_per_minute=settings.llm_requests_per_minute,
+        )
 
     @property
     def store(self) -> VectorStore:

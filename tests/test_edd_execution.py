@@ -1,5 +1,7 @@
 import json
 import sys
+from datetime import datetime, timedelta, timezone
+from email.utils import format_datetime
 from unittest.mock import Mock
 
 import httpx
@@ -12,7 +14,8 @@ from evals.metrics import metric_label, retrieval_scores, scores_for
 from evals.reporting import compare, complete, read_report, report_csv, report_json
 from evals.schemas import INJECTION_MARKER, INJECTION_SOURCE, Row, load_dataset
 from src.config import Settings
-from src.llm import OpenAICompatibleLLM
+import src.llm as transport
+from src.llm import LLMRateLimitExceeded, OpenAICompatibleLLM
 from src.router import LLMRouter
 from src.schemas import INSUFFICIENT, SearchResult
 from test_edd import CHUNK, EXAMPLE, PASSING_JUDGE_JSON, config
@@ -173,29 +176,113 @@ def test_resume_retries_only_unfinished_and_preserves_later_rows(tmp_path, monke
     assert path.read_bytes() == original_bytes
 
 
-@pytest.mark.parametrize("statuses", [(429, 503, 200), (429, 429, 429)])
-def test_openai_sdk_retries_temporary_errors_but_stops_after_budget(monkeypatch, statuses):
-    requests = []
+@pytest.fixture
+def api_clock(monkeypatch):
+    now = [0.0]
+    monkeypatch.setattr(transport, "_limiters", {})
+    monkeypatch.setattr(transport, "monotonic", lambda: now[0])
+
+    def sleep(seconds):
+        now[0] += seconds
+
+    monkeypatch.setattr(transport, "sleep", sleep)
+    return now
+
+
+def mock_api(monkeypatch, handler):
     real_openai = openai.OpenAI
 
-    def handler(request):
-        requests.append(request)
-        status = statuses[len(requests) - 1]
-        if status != 200:
-            return httpx.Response(status, json={"error": {"message": "temporary"}}, headers={"retry-after-ms": "1"})
-        return httpx.Response(200, json={"choices": [{"message": {"content": VALID}}]})
-
     def client(**kwargs):
+        assert kwargs["max_retries"] == 0
         return real_openai(**kwargs, http_client=httpx.Client(transport=httpx.MockTransport(handler)))
 
     monkeypatch.setattr(openai, "OpenAI", client)
-    llm = OpenAICompatibleLLM("http://example.invalid/v1", "nonsecret-test-key", "mock")
+
+
+@pytest.mark.parametrize("statuses", [(429, 503, 200), (429, 429, 429)])
+def test_retries_honor_retry_after_and_exponential_backoff(monkeypatch, api_clock, statuses):
+    requests = []
+
+    def handler(request):
+        status = statuses[len(requests)]
+        requests.append(api_clock[0])
+        if status == 200:
+            return httpx.Response(200, json={"choices": [{"message": {"content": VALID}}]})
+        headers = {"Retry-After": "8"} if len(requests) == 1 else {}
+        return httpx.Response(status, json={"error": {"message": "RequestsPerMinute"}}, headers=headers)
+
+    mock_api(monkeypatch, handler)
+    llm = OpenAICompatibleLLM("http://example.invalid/v1", "nonsecret-test-key", "mock", 60)
     if statuses[-1] == 200:
         assert llm.generate("system", "user") == VALID
     else:
-        with pytest.raises(openai.RateLimitError):
+        with pytest.raises(LLMRateLimitExceeded, match="Временное ограничение"):
             llm.generate("system", "user")
-    assert len(requests) == 3
+    assert requests == [0, 8, 10]
+
+
+def test_retry_after_accepts_http_date():
+    date = datetime.now(timezone.utc) + timedelta(seconds=30)
+    request = httpx.Request("POST", "http://example.invalid")
+    response = httpx.Response(429, headers={"Retry-After": format_datetime(date, usegmt=True)}, request=request)
+    error = openai.RateLimitError("temporary", response=response, body=None)
+    assert transport._retry_after(error) == pytest.approx(30, abs=2)
+
+
+def test_same_model_shares_rate_limit_across_clients_and_other_model_is_independent(monkeypatch, api_clock):
+    requests = []
+
+    def handler(request):
+        requests.append(api_clock[0])
+        return httpx.Response(200, json={"choices": [{"message": {"content": VALID}}]})
+
+    mock_api(monkeypatch, handler)
+    generation = OpenAICompatibleLLM("http://gen.invalid/v1", "test-key", "mock")
+    judge = OpenAICompatibleLLM("http://judge.invalid/v1", "other-test-key", "models/mock")
+    other = OpenAICompatibleLLM("http://judge.invalid/v1", "other-test-key", "other-model")
+    for client in (generation, other, judge, generation):
+        client.generate("system", "user")
+    assert requests == [0, 0, 5, 10]
+
+
+def test_daily_quota_stops_without_retry(monkeypatch, api_clock):
+    handler = Mock(return_value=httpx.Response(429, json={"error": {
+        "message": "private provider response",
+        "details": [{"violations": [{"quotaId": "GenerateRequestsPerDayPerProjectPerModel"}]}],
+    }}, headers={"Retry-After": "42"}))
+    mock_api(monkeypatch, handler)
+    llm = OpenAICompatibleLLM("http://example.invalid/v1", "test-key", "mock")
+    with pytest.raises(LLMRateLimitExceeded, match="суточная квота") as failure:
+        llm.generate("system", "user")
+    assert "private provider response" not in str(failure.value)
+    assert handler.call_count == 1 and api_clock[0] == 0
+
+
+def test_rate_limit_stops_evaluation_and_resume_keeps_completed_rows(monkeypatch, tmp_path):
+    examples = [EXAMPLE.model_copy(update={"id": n}) for n in range(1, 101)]
+    limited_judge = Mock()
+    limited_judge.generate.side_effect = [PASSING_JUDGE_JSON, LLMRateLimitExceeded(daily=True)]
+    judge = Judge(limited_judge, PROMPTS / "judge.md")
+    evaluator = evaluate.Evaluator(
+        pipeline(SequenceLLM(VALID, VALID)), examples, config(examples), judge,
+    )
+    actual_evaluate = evaluator.evaluate
+    path = tmp_path / "version_a.json"
+
+    with pytest.raises(LLMRateLimitExceeded):
+        evaluator.run("zero_shot", limit=3, output=path)
+    saved = read_report(path).rows
+    assert limited_judge.generate.call_count == 2
+    assert [row.example.id for row in saved] == [1]
+
+    evaluator.pipeline.llm = SequenceLLM(VALID, VALID)
+    evaluator.judge.llm = SequenceLLM(PASSING_JUDGE_JSON, PASSING_JUDGE_JSON)
+    run_row = Mock(side_effect=actual_evaluate)
+    monkeypatch.setattr(evaluator, "evaluate", run_row)
+    resumed = evaluator.run("zero_shot", limit=3, output=path, resume=True)
+    assert [call.args[0].id for call in run_row.call_args_list] == [2, 3]
+    assert resumed.rows[0] == saved[0]
+    assert [row.example.id for row in resumed.rows if not row.errors] == [1, 2, 3]
 
 
 def test_api_probe_uses_separate_judge_and_preserves_legacy_defaults(monkeypatch):
@@ -210,7 +297,10 @@ def test_api_probe_uses_separate_judge_and_preserves_legacy_defaults(monkeypatch
         judge_base_url="http://judge.invalid/v1", judge_api_key="test-judge-key", judge_model="scoring",
     )
     evaluate.check_api(settings, "scoring-override")
-    constructor.assert_called_once_with("http://judge.invalid/v1", "test-judge-key", "scoring-override")
+    constructor.assert_called_once_with(
+        "http://judge.invalid/v1", "test-judge-key", "scoring-override",
+        requests_per_minute=settings.llm_requests_per_minute,
+    )
     assert len(generation.prompts) == 1 and len(judging.prompts) == 1
     with pytest.raises(ValueError, match="JUDGE_API_KEY"):
         evaluate.check_api(settings.model_copy(update={"judge_api_key": None}))

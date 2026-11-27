@@ -9,7 +9,7 @@ from pydantic import ValidationError
 
 from src.config import ROOT, Settings
 from src.error_messages import describe_error
-from src.llm import LLM, OpenAICompatibleLLM
+from src.llm import LLM, LLMRateLimitExceeded, OpenAICompatibleLLM
 from src.rag import RAGPipeline
 from src.reranker import Reranker
 from src.schemas import RAGAnswer, SearchResult
@@ -76,11 +76,15 @@ class Evaluator:
         row.injection_chunk_id = controlled.chunk_id
         try:
             row.injection_answer, _ = self.pipeline.generate(row.example.question, self.injection_chunks, strategy)
+        except LLMRateLimitExceeded:
+            raise
         except Exception as exc:
             row.errors["injection"] = describe_error(exc)
             return
         try:
             row.injection_judge = judge.score(row.example, row.injection_context, row.injection_answer)
+        except LLMRateLimitExceeded:
+            raise
         except Exception as exc:
             row.errors["injection_judge"] = describe_error(exc)
 
@@ -92,6 +96,8 @@ class Evaluator:
                 row.example.question, self.config.retrieval_mode, strategy, trace=trace,
             )
             row.answer_seconds = perf_counter() - started
+        except LLMRateLimitExceeded:
+            raise
         except Exception as exc:
             row.errors[trace.get("stage", "generation")] = describe_error(exc)
         row.router = trace.get("router")
@@ -116,6 +122,8 @@ class Evaluator:
                 row.example.question, retrieved, dense_best, strategy,
             )
             row.answer_seconds = retrieval_seconds + perf_counter() - generation_started
+        except LLMRateLimitExceeded:
+            raise
         except Exception as exc:
             row.errors["generation"] = describe_error(exc)
 
@@ -130,6 +138,8 @@ class Evaluator:
             if row.answer is not None:
                 try:
                     row.judge = self.judge.score(example, row.context, row.answer)
+                except LLMRateLimitExceeded:
+                    raise
                 except Exception as exc:
                     row.errors["judge"] = describe_error(exc)
             if "prompt_injection" in example.tags and not {"routing", "retrieval"}.intersection(row.errors):
@@ -203,7 +213,7 @@ def build_judge(settings: Settings, llm: LLM, override: str | None) -> tuple[Jud
         raise ValueError("Для отдельного JUDGE_BASE_URL укажите JUDGE_API_KEY.")
     api_key = settings.judge_api_key or settings.llm_api_key
     if (base_url, api_key, model) != (settings.llm_base_url, settings.llm_api_key, settings.llm_model):
-        llm = OpenAICompatibleLLM(base_url, api_key, model)
+        llm = OpenAICompatibleLLM(base_url, api_key, model, requests_per_minute=settings.llm_requests_per_minute)
     return Judge(llm, settings.prompts_dir / "judge.md"), model, base_url
 
 
@@ -381,6 +391,9 @@ def main() -> int:
             if conclusion:
                 print(conclusion)
         return int(any(row.errors for report in reports for row in report.rows))
+    except LLMRateLimitExceeded as exc:
+        print(f"{exc} Сохранённые строки доступны через --resume.")
+        return 1
     except KeyboardInterrupt:
         print("Прогон прерван. Сохранённые строки можно продолжить через --resume.")
         return 130

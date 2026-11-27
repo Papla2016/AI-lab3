@@ -15,7 +15,11 @@ def main() -> None:
     args, cfg = parser.parse_args(), Settings()
     embed = SentenceTransformerEmbeddings(cfg.embedding_model)
     store = VectorStore(cfg.storage_dir, cfg.collection_name, embed)
-    pipeline = RAGPipeline(store, OpenAICompatibleLLM(cfg.llm_base_url, cfg.llm_api_key, cfg.llm_model), cfg.prompts_dir,
+    llm = OpenAICompatibleLLM(
+        cfg.llm_base_url, cfg.llm_api_key, cfg.llm_model,
+        requests_per_minute=cfg.llm_requests_per_minute,
+    )
+    pipeline = RAGPipeline(store, llm, cfg.prompts_dir,
         cfg.top_n, cfg.final_k, cfg.min_dense_score, cfg.rrf_k, Reranker(cfg.rerank_model, cfg.rerank_enabled))
     questions = json.loads((ROOT / "evaluation/questions.json").read_text())
     rows = ["# Результаты evaluation", "", "Результаты получены реальным запуском; файл можно пересоздать.", ""]

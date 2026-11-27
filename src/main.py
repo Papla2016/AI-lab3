@@ -45,7 +45,10 @@ def main() -> None:
         store.replace(chunks)
         print(f"Проиндексировано документов: {len(documents)}, чанков: {len(chunks)}")
         return
-    llm = OpenAICompatibleLLM(settings.llm_base_url, settings.llm_api_key, settings.llm_model)
+    llm = OpenAICompatibleLLM(
+        settings.llm_base_url, settings.llm_api_key, settings.llm_model,
+        requests_per_minute=settings.llm_requests_per_minute,
+    )
     if args.command == "baseline":
         prompt = (settings.prompts_dir / "baseline.md").read_text(encoding="utf-8")
         print(llm.generate(prompt, args.question))
