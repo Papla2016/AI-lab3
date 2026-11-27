@@ -7,7 +7,8 @@ class LLM(Protocol):
 class OpenAICompatibleLLM:
     def __init__(self, base_url: str, api_key: str, model: str) -> None:
         from openai import OpenAI
-        self.client, self.model = OpenAI(base_url=base_url, api_key=api_key), model
+        self.client = OpenAI(base_url=base_url, api_key=api_key, max_retries=2, timeout=90.0)
+        self.model = model
 
     def generate(self, system: str, user: str) -> str:
         response = self.client.chat.completions.create(model=self.model, temperature=0,

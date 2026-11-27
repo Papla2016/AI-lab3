@@ -9,5 +9,4 @@ data/*
 evaluation/results.*
 
 
-evals/results/*
-!evals/results/.gitkeep
+evals/results/**/.edd-*.tmp

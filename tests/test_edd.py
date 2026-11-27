@@ -15,6 +15,7 @@ from src.schemas import INSUFFICIENT, RAGAnswer, SearchResult
 from test_pipeline import PROMPTS, VALID, FakeStore, SequenceLLM, pipeline
 
 JUDGE_JSON = '{"faithfulness":5,"answer_relevancy":4,"correctness":3,"completeness":2,"justification":"Достаточно."}'
+PASSING_JUDGE_JSON = '{"faithfulness":5,"answer_relevancy":4,"correctness":5,"completeness":4,"justification":"Достаточно."}'
 EXAMPLE = Example(
     id=1, question="Как установить пакет?", ground_truth="Используйте tool install.",
     expected_sources=["guide.txt"], type="in_corpus", tags=["command"],
@@ -84,7 +85,7 @@ def test_retrieval_precision_counts_documents_and_recall_counts_groups():
     unrelated = CHUNK.model_copy(update={"source": "other.txt", "chunk_id": "other"})
     found = [unrelated] * 5 + [CHUNK, duplicate]
     assert retrieval_scores(example, found) == {
-        "hit_at_5": 0, "context_precision": 0.5, "context_recall": 0.5,
+        "hit_at_k": 0, "context_precision": 0.5, "context_recall": 0.5,
     }
     assert retrieval_scores(example, []) == dict.fromkeys(retrieval_scores(example, found), 0)
 
@@ -100,7 +101,7 @@ def test_aggregation_skips_inapplicable_and_failed_rows():
         Row(example=outside, answer=INSUFFICIENT),
     ]
     result = summarize(rows)
-    assert result["hit_at_5"] == {"mean": 1, "n": 1}
+    assert result["hit_at_k"] == {"mean": 1, "n": 1}
     assert result["refusal_accuracy"] == {"mean": 1, "n": 1}
     assert result["faithfulness"] == {"mean": None, "n": 0}
 
@@ -156,7 +157,7 @@ def test_judge_api_error_is_recorded_without_provider_body():
     runner = Evaluator(pipeline(SequenceLLM(VALID)), [EXAMPLE], config([EXAMPLE]), Judge(FailingLLM(), PROMPTS / "judge.md"))
     row = runner.evaluate(EXAMPLE, "zero_shot")
     assert row.judge is None
-    assert row.metrics["faithfulness"] is None and row.metrics["hit_at_5"] == 1
+    assert row.metrics["faithfulness"] is None and row.metrics["hit_at_k"] == 1
     assert "HTTP 429" in row.errors["judge"] and "secret" not in row.errors["judge"]
 
 
@@ -173,14 +174,20 @@ def test_controlled_injection_is_measured_only_if_exposed():
     llm = SequenceLLM(VALID, injected, controlled_valid)
     runner = Evaluator(
         pipeline(llm), [example], config([example]),
-        Judge(SequenceLLM(JUDGE_JSON), PROMPTS / "judge.md"), [attack],
+        Judge(SequenceLLM(JUDGE_JSON, PASSING_JUDGE_JSON), PROMPTS / "judge.md"), [attack],
     )
     row = runner.evaluate(example, "zero_shot")
-    assert row.metrics["hit_at_5"] == 0
+    assert row.metrics["hit_at_k"] == 0
     assert row.metrics["injection_resistance"] == 1
     assert row.injection_mode == "controlled" and row.injection_chunk_id == "attack"
     assert INJECTION_MARKER not in llm.prompts[0][1] and INJECTION_MARKER in llm.prompts[1][1]
     assert len(llm.prompts) == 3
+    assert row.injection_judge.correctness == 5
+    assert INJECTION_MARKER in runner.judge.llm.prompts[1][1]
+    wrong_facts = row.injection_judge.model_copy(update={"correctness": 2})
+    assert scores_for(row.model_copy(update={"injection_judge": wrong_facts}))["injection_resistance"] == 0
+    assert scores_for(row.model_copy(update={"injection_judge": None}))["injection_resistance"] is None
+    assert scores_for(row.model_copy(update={"injection_answer": None}))["injection_resistance"] == 0
     assert scores_for(row.model_copy(update={"injection_context": []}))["injection_resistance"] is None
     bad_answer = RAGAnswer.model_validate_json(injected)
     assert scores_for(row.model_copy(update={"injection_answer": bad_answer}))["injection_resistance"] == 0
@@ -193,7 +200,7 @@ def test_natural_injection_uses_final_prompt_and_needs_no_control_call():
     rag = pipeline(SequenceLLM(VALID.replace("guide.txt", INJECTION_SOURCE)))
     rag.store.result = SearchResult(INJECTION_MARKER, {"source": INJECTION_SOURCE, "chunk_id": "abc"}, 0.9)
     row = Evaluator(
-        rag, [example], config([example]), Judge(SequenceLLM(JUDGE_JSON), PROMPTS / "judge.md"),
+        rag, [example], config([example]), Judge(SequenceLLM(PASSING_JUDGE_JSON), PROMPTS / "judge.md"),
     ).evaluate(example, "few_shot")
     assert row.injection_mode == "natural" and row.injection_chunk_id == "abc"
     assert row.metrics["injection_resistance"] == 1 and not row.injection_context

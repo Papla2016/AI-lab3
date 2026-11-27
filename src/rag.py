@@ -32,39 +32,48 @@ class RAGPipeline:
         user = (self.prompts_dir / "user.md").read_text(encoding="utf-8").format(question=question, context=context)
         return system, user, context
 
-    def ask(self, question: str, mode: str, strategy: str, debug: bool = False) -> tuple[RAGAnswer, dict]:
+    def ask(
+        self, question: str, mode: str, strategy: str, debug: bool = False, *, trace: dict | None = None,
+    ) -> tuple[RAGAnswer, dict]:
+        if trace is None:
+            trace = {}
+        trace.update(question=question, retrieval_mode=mode, stage="routing")
         if self.router is None:
             raise RuntimeError("Для маршрутизации нужна LLM или явно заданный router.")
         decision = self.router.classify(question)
-        trace: dict = {"question": question, "router": decision.value, "retrieval_mode": mode}
+        trace["router"] = decision.value
         if decision is Route.GENERAL_OR_OUT_OF_SCOPE:
             return INSUFFICIENT.model_copy(), trace
+        trace["stage"] = "retrieval"
         before, after = self.retrieve(question, mode)
         trace.update(before_rerank=before, after_rerank=after)
         # Dense score gates both modes: an RRF number is not a semantic similarity.
         dense_best = self.store.search(question, 1)
-        answer, generation_trace = self.generate_from_retrieval(question, after, dense_best, strategy)
-        return answer, {**trace, **generation_trace}
+        trace["stage"] = "generation"
+        return self.generate_from_retrieval(question, after, dense_best, strategy, trace=trace)
 
     def generate_from_retrieval(
         self, question: str, after: list[SearchResult], dense_best: list[SearchResult], strategy: str,
+        *, trace: dict | None = None,
     ) -> tuple[RAGAnswer, dict]:
         if not self.has_sufficient_context(after, dense_best):
-            return INSUFFICIENT.model_copy(), {}
-        return self.generate(question, after, strategy)
+            return INSUFFICIENT.model_copy(), trace if trace is not None else {}
+        return self.generate(question, after, strategy, trace=trace)
 
     def has_sufficient_context(self, after: list[SearchResult], dense_best: list[SearchResult]) -> bool:
         return bool(after and dense_best and dense_best[0].score >= self.min_score)
 
     def generate(
-        self, question: str, after: list[SearchResult], strategy: str,
+        self, question: str, after: list[SearchResult], strategy: str, *, trace: dict | None = None,
     ) -> tuple[RAGAnswer, dict]:
+        if trace is None:
+            trace = {}
         if not after:
-            return INSUFFICIENT.model_copy(), {}
+            return INSUFFICIENT.model_copy(), trace
         if self.llm is None:
             raise RuntimeError("Для генерации ответа нужна LLM.")
         system, user, context = self._prompt(question, after, strategy)
-        trace = {"context": context, "final_prompt": f"SYSTEM:\n{system}\n\nUSER:\n{user}"}
+        trace.update(context=context, final_prompt=f"SYSTEM:\n{system}\n\nUSER:\n{user}")
         if strategy == "cot_structured":
             evidence_prompt = (self.prompts_dir / "cot_structured.md").read_text(encoding="utf-8").format(
                 question=question, context=context)
@@ -86,7 +95,7 @@ class RAGPipeline:
                     raise ValueError("an insufficient answer must not contain citations")
                 if answer.insufficient_context:
                     return INSUFFICIENT.model_copy(), trace
-                if answer.answer.strip().casefold() == "prompt_injection_success":
+                if "prompt_injection_success" in answer.answer.casefold():
                     raise ValueError("Ответ повторяет тестовую инструкцию.")
                 if not answer.citations:
                     raise ValueError("a sufficient answer must contain at least one citation")

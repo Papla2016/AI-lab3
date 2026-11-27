@@ -5,21 +5,26 @@ from collections.abc import Callable
 from pathlib import Path
 from time import perf_counter
 
+from pydantic import ValidationError
+
 from src.config import ROOT, Settings
 from src.error_messages import describe_error
-from src.llm import OpenAICompatibleLLM
+from src.llm import LLM, OpenAICompatibleLLM
 from src.rag import RAGPipeline
 from src.reranker import Reranker
-from src.schemas import SearchResult
+from src.schemas import RAGAnswer, SearchResult
 from src.web_service import RAGLabService
 
 from .judge import JUDGE_VERSION, Judge
-from .metrics import attack_chunk, scores_for
+from .metrics import RETRIEVAL_METRICS, attack_chunk, citations_valid, metric_label, scores_for, summarize
 from .reporting import (
     comparison_conclusion, complete, dataset_digest, digest, read_report, report_json,
     row_complete, save_comparison, write_atomic,
 )
-from .schemas import DATASET, INJECTION_SOURCE, RESULTS, Chunk, Example, Report, RetrievalMode, Row, RunConfig, Strategy, load_dataset
+from .schemas import (
+    DATASET, INJECTION_SOURCE, RESULTS, Chunk, EvaluationMode, Example, Report,
+    RetrievalMode, Row, RunConfig, Strategy, load_dataset,
+)
 
 STRATEGIES: dict[str, Strategy] = {"a": "zero_shot", "b": "few_shot"}
 Progress = Callable[[int, int, Row], None]
@@ -50,11 +55,13 @@ class Evaluator:
         if example.id not in self.retrieval_cache:
             started = perf_counter()
             _, retrieved = self.pipeline.retrieve(example.question, self.config.retrieval_mode)
-            dense_best = self.pipeline.store.search(example.question, 1) if self.judge is not None else []
+            dense_best = self.pipeline.store.search(
+                example.question, 1,
+            ) if self.config.evaluation_mode == "prompt_comparison" else []
             self.retrieval_cache[example.id] = (retrieved, dense_best, perf_counter() - started)
         return self.retrieval_cache[example.id]
 
-    def _check_injection(self, row: Row, strategy: Strategy) -> None:
+    def _check_injection(self, row: Row, strategy: Strategy, judge: Judge) -> None:
         natural = next((chunk for chunk in row.context if attack_chunk(chunk)), None)
         if natural is not None:
             row.injection_mode = "natural"
@@ -71,53 +78,79 @@ class Evaluator:
             row.injection_answer, _ = self.pipeline.generate(row.example.question, self.injection_chunks, strategy)
         except Exception as exc:
             row.errors["injection"] = describe_error(exc)
+            return
+        try:
+            row.injection_judge = judge.score(row.example, row.injection_context, row.injection_answer)
+        except Exception as exc:
+            row.errors["injection_judge"] = describe_error(exc)
+
+    def _end_to_end(self, row: Row, strategy: Strategy) -> None:
+        trace: dict = {}
+        started = perf_counter()
+        try:
+            row.answer, trace = self.pipeline.ask(
+                row.example.question, self.config.retrieval_mode, strategy, trace=trace,
+            )
+            row.answer_seconds = perf_counter() - started
+        except Exception as exc:
+            row.errors[trace.get("stage", "generation")] = describe_error(exc)
+        row.router = trace.get("router")
+        row.retrieved = [as_chunk(chunk) for chunk in trace.get("after_rerank", [])]
+        if "context" in trace:
+            row.context = row.retrieved
+
+    def _isolated(self, row: Row, strategy: Strategy | None) -> None:
+        try:
+            retrieved, dense_best, retrieval_seconds = self._retrieve(row.example)
+            row.retrieved = [as_chunk(chunk) for chunk in retrieved]
+        except Exception as exc:
+            row.errors["retrieval"] = describe_error(exc)
+            return
+        if strategy is None:
+            return
+        if self.pipeline.has_sufficient_context(retrieved, dense_best):
+            row.context = row.retrieved
+        try:
+            generation_started = perf_counter()
+            row.answer, _ = self.pipeline.generate_from_retrieval(
+                row.example.question, retrieved, dense_best, strategy,
+            )
+            row.answer_seconds = retrieval_seconds + perf_counter() - generation_started
+        except Exception as exc:
+            row.errors["generation"] = describe_error(exc)
 
     def evaluate(self, example: Example, strategy: Strategy | None = None) -> Row:
         started = perf_counter()
         row = Row(example=example)
-        try:
-            retrieved, dense_best, retrieval_seconds = self._retrieve(example)
-            row.retrieved = [as_chunk(chunk) for chunk in retrieved]
-        except Exception as exc:
-            row.errors["retrieval"] = describe_error(exc)
+        if strategy is not None and self.config.evaluation_mode == "end_to_end":
+            self._end_to_end(row, strategy)
         else:
-            if strategy is not None and self.judge is not None:
-                if self.pipeline.has_sufficient_context(retrieved, dense_best):
-                    row.context = row.retrieved
+            self._isolated(row, strategy)
+        if strategy is not None and self.judge is not None:
+            if row.answer is not None:
                 try:
-                    generation_started = perf_counter()
-                    row.answer, _ = self.pipeline.generate_from_retrieval(
-                        example.question, retrieved, dense_best, strategy,
-                    )
-                    row.answer_seconds = retrieval_seconds + perf_counter() - generation_started
+                    row.judge = self.judge.score(example, row.context, row.answer)
                 except Exception as exc:
-                    row.errors["generation"] = describe_error(exc)
-                if row.answer is not None:
-                    try:
-                        row.judge = self.judge.score(example, row.context, row.answer)
-                    except Exception as exc:
-                        row.errors["judge"] = describe_error(exc)
-                if "prompt_injection" in example.tags:
-                    self._check_injection(row, strategy)
+                    row.errors["judge"] = describe_error(exc)
+            if "prompt_injection" in example.tags and not {"routing", "retrieval"}.intersection(row.errors):
+                self._check_injection(row, strategy, self.judge)
         row.elapsed_seconds = perf_counter() - started
-        row.metrics = scores_for(row)
+        row.metrics = scores_for(row, self.config.top_k)
         return row
 
-    def run(
-        self, strategy: Strategy | None = None, *, limit: int | None = None,
-        output: Path | None = None, resume: bool = False, progress: Progress | None = None,
-    ) -> Report:
+    def prepare(
+        self, strategy: Strategy | None, limit: int | None, output: Path | None, resume: bool,
+    ) -> tuple[list[Example], Report]:
         if limit is not None and not 1 <= limit <= len(self.examples):
             raise ValueError("Лимит должен быть от 1 до размера датасета.")
         if (strategy is not None) != (self.judge is not None):
             raise ValueError("Для полного прогона нужны стратегия и judge.")
         selected = self.examples[:limit]
         report = Report(
-            schema_version=1, config=self.config.model_copy(update={"strategy": strategy}),
+            schema_version=2, config=self.config.model_copy(update={"strategy": strategy}),
             dataset_size=len(self.examples), selected_ids=[example.id for example in selected],
             limited=limit is not None,
         )
-        saved: dict[int, Row] = {}
         if resume and output is not None and output.exists():
             previous = read_report(output)
             if (
@@ -125,15 +158,29 @@ class Evaluator:
                 or previous.selected_ids != report.selected_ids or previous.limited != report.limited
             ):
                 raise ValueError("Параметры сохранённого прогона отличаются. Выберите другую папку результатов.")
-            saved = {row.example.id: row for row in previous.rows}
+            row_ids = [row.example.id for row in previous.rows]
+            current = {example.id: example for example in selected}
+            if len(row_ids) != len(set(row_ids)) or any(current.get(row.example.id) != row.example for row in previous.rows):
+                raise ValueError("В контрольной точке есть дубли или вопросы из другой версии датасета.")
+            report.rows = previous.rows
+        return selected, report
 
+    def run(
+        self, strategy: Strategy | None = None, *, limit: int | None = None,
+        output: Path | None = None, resume: bool = False, progress: Progress | None = None,
+    ) -> Report:
+        selected, report = self.prepare(strategy, limit, output, resume)
+        saved = {row.example.id: row for row in report.rows}
+        if output is not None and not saved:
+            write_atomic(output, report_json(report))
         for number, example in enumerate(selected, 1):
             row = saved.get(example.id)
-            if row is None or row.example != example or not row_complete(row, strategy is None):
+            if row is None or not row_complete(row, report.config):
                 row = self.evaluate(example, strategy)
-            report.rows.append(row)
-            if output is not None:
-                write_atomic(output, report_json(report))
+                saved[example.id] = row
+                report.rows = [saved[example_id] for example_id in report.selected_ids if example_id in saved]
+                if output is not None:
+                    write_atomic(output, report_json(report))
             if progress is not None:
                 progress(number, len(selected), row)
         return report
@@ -149,10 +196,44 @@ def files_digest(paths: list[Path]) -> str:
     return digest(json.dumps([(path.name, digest(path.read_bytes())) for path in paths]).encode("utf-8"))
 
 
+def build_judge(settings: Settings, llm: LLM, override: str | None) -> tuple[Judge, str, str]:
+    base_url = settings.judge_base_url or settings.llm_base_url
+    model = override or settings.judge_model or settings.llm_model
+    if base_url != settings.llm_base_url and not settings.judge_api_key:
+        raise ValueError("Для отдельного JUDGE_BASE_URL укажите JUDGE_API_KEY.")
+    api_key = settings.judge_api_key or settings.llm_api_key
+    if (base_url, api_key, model) != (settings.llm_base_url, settings.llm_api_key, settings.llm_model):
+        llm = OpenAICompatibleLLM(base_url, api_key, model)
+    return Judge(llm, settings.prompts_dir / "judge.md"), model, base_url
+
+
+def check_api(settings: Settings, override: str | None = None) -> None:
+    """Probe generation and judge JSON contracts without indexing or writing an evaluation."""
+    llm = RAGLabService(settings).llm
+    judge, _, _ = build_judge(settings, llm, override)
+    chunk = Chunk(source="probe.txt", chunk_id="probe", text="Контрольное число — 42.", score=1)
+    example = Example(
+        id=1, question="Какое контрольное число?", ground_truth="42",
+        expected_sources=[chunk.source], type="in_corpus", tags=["probe"],
+    )
+    system = (settings.prompts_dir / "structured.md").read_text(encoding="utf-8")
+    raw = llm.generate(system, (
+        f"Фрагмент [source={chunk.source}; chunk_id={chunk.chunk_id}] {chunk.text}\n"
+        f"{example.question} Ответьте строкой «42» и процитируйте фрагмент."
+    ))
+    try:
+        answer = RAGAnswer.model_validate_json(raw)
+    except ValidationError:
+        raise ValueError("Проверка генерации: ответ не соответствует схеме RAGAnswer.") from None
+    if answer.answer.strip() != "42" or not citations_valid(answer, [chunk]):
+        raise ValueError("Проверка генерации: контрольный ответ или цитата некорректны.")
+    judge.score(example, [chunk], answer)
+
+
 def build_evaluator(
     settings: Settings, examples: list[Example], *, retrieval_only: bool,
     mode: RetrievalMode, top_k: int, judge_model: str | None = None,
-    service: RAGLabService | None = None,
+    service: RAGLabService | None = None, evaluation_mode: EvaluationMode = "prompt_comparison",
 ) -> Evaluator:
     service = service or RAGLabService(settings)
     validate_sources(examples, set(service.files()))
@@ -177,33 +258,30 @@ def build_evaluator(
         reranker=Reranker(settings.rerank_model, settings.rerank_enabled),
     )
     scorer = None
-    prompt_hash = judge_hash = None
+    prompt_hash = judge_hash = judge_endpoint = None
     if llm is not None:
-        judge_model = judge_model or settings.llm_model
-        judge_llm = llm if judge_model == settings.llm_model else OpenAICompatibleLLM(
-            settings.llm_base_url, settings.llm_api_key, judge_model,
-        )
-        judge_path = settings.prompts_dir / "judge.md"
-        scorer = Judge(judge_llm, judge_path)
-        judge_hash = digest(judge_path.read_bytes())
-        prompt_hash = files_digest([
-            settings.prompts_dir / name for name in
-            ("system.md", "structured.md", "user.md", "few_shot.md", "cot_structured.md")
-        ])
+        scorer, judge_model, judge_endpoint = build_judge(settings, llm, judge_model)
+        judge_hash = digest(scorer.prompt.encode("utf-8"))
+        prompts = ["system.md", "structured.md", "user.md", "few_shot.md", "cot_structured.md"]
+        if evaluation_mode == "end_to_end":
+            prompts.append("router.md")
+        prompt_hash = files_digest([settings.prompts_dir / name for name in prompts])
 
     config = RunConfig(
         dataset_sha256=dataset_digest(examples), index_sha256=index_hash,
         prompts_sha256=prompt_hash, judge_sha256=judge_hash,
         implementation_sha256=files_digest([
-            Path(__file__).with_name(name) for name in ("evaluate.py", "judge.py", "metrics.py", "schemas.py")
+            Path(__file__).with_name(name) for name in ("evaluate.py", "judge.py", "metrics.py", "reporting.py", "schemas.py")
         ] + sorted((ROOT / "src").glob("*.py"))),
         collection=settings.collection_name, embedding_model=settings.embedding_model,
         chunk_size=settings.chunk_size, chunk_overlap=settings.chunk_overlap, retrieval_mode=mode,
+        evaluation_mode="retrieval_only" if retrieval_only else evaluation_mode,
         top_n=top_n, top_k=top_k, rerank_model=settings.rerank_model if settings.rerank_enabled else None,
         rrf_k=settings.rrf_k, min_dense_score=settings.min_dense_score,
         llm_model=settings.llm_model if llm is not None else None,
         endpoint_sha256=digest(settings.llm_base_url.encode("utf-8")) if llm is not None else None,
         judge_model=judge_model if scorer is not None else None,
+        judge_endpoint_sha256=digest(judge_endpoint.encode("utf-8")) if judge_endpoint else None,
         judge_version=JUDGE_VERSION if scorer is not None else None,
     )
     injection_chunks = [
@@ -229,38 +307,71 @@ def main() -> int:
     operation.add_argument("--version", choices=list(STRATEGIES))
     operation.add_argument("--compare", action="store_true")
     operation.add_argument("--validate-dataset", action="store_true")
+    operation.add_argument("--check-api", action="store_true", help="Проверить JSON генерации и judge без индекса.")
     parser.add_argument("--dataset", type=Path, default=DATASET)
     parser.add_argument("--output-dir", type=Path)
+    parser.add_argument("--evaluation-mode", choices=["prompt_comparison", "end_to_end"], default="prompt_comparison")
     parser.add_argument("--mode", choices=["dense", "hybrid"])
     parser.add_argument("--top-k", type=int)
     parser.add_argument("--limit", type=int)
-    parser.add_argument("--judge-model", help="Модель judge на том же API; по умолчанию LLM_MODEL.")
+    parser.add_argument("--judge-model", help="Переопределить JUDGE_MODEL для этого прогона.")
     parser.add_argument("--resume", action="store_true")
     args = parser.parse_args()
     try:
         settings = Settings()
+        if args.check_api:
+            check_api(settings, args.judge_model)
+            print("Генерация и judge вернули валидный структурированный JSON.")
+            return 0
         examples = load_dataset(args.dataset)
         if args.validate_dataset:
             validate_sources(examples, set(RAGLabService(settings).files()))
             print(f"Датасет проверен: {len(examples)} вопросов.")
             return 0
-        folder = args.output_dir or (RESULTS / "trial" if args.limit is not None else RESULTS)
+        if args.retrieval_only and args.evaluation_mode == "end_to_end":
+            raise ValueError("End-to-end требует оценку ответа. Выберите --version или --compare.")
+        folder = RESULTS / "trial" if args.limit is not None else RESULTS
+        if args.evaluation_mode == "end_to_end":
+            folder /= "end_to_end"
+        folder = args.output_dir or folder
         evaluator = build_evaluator(
             settings, examples, retrieval_only=args.retrieval_only,
             mode=args.mode or settings.retrieval_mode,
             top_k=settings.final_k if args.top_k is None else args.top_k, judge_model=args.judge_model,
+            evaluation_mode=args.evaluation_mode,
         )
         names = ("a", "b") if args.compare else ((args.version,) if args.version else ("retrieval",))
+        outputs = {
+            name: folder / (f"version_{name}.json" if name in STRATEGIES else "retrieval.json")
+            for name in names
+        }
+        # Check both checkpoints before a resumed A/B run modifies either report.
+        checkpoints = [
+            evaluator.prepare(STRATEGIES.get(name), args.limit, path, args.resume)[1]
+            for name, path in outputs.items()
+        ]
+        if not args.retrieval_only and any(
+            len(report.rows) != len(report.selected_ids)
+            or any(not row_complete(row, report.config) for row in report.rows)
+            for report in checkpoints
+        ):
+            # Existing tables describe an earlier pair once either report needs new work.
+            (folder / "comparison.json").unlink(missing_ok=True)
+            (folder / "comparison.csv").unlink(missing_ok=True)
         reports = []
-        for name in names:
-            path = folder / (f"version_{name}.json" if name in STRATEGIES else "retrieval.json")
-            print(f"Прогон {name.upper()} → {path}", flush=True)
+        for name, path in outputs.items():
+            hit = metric_label("hit_at_k", evaluator.config.top_k)
+            print(f"Прогон {name.upper()} ({evaluator.config.evaluation_mode}, {hit}) → {path}", flush=True)
             report = evaluator.run(
                 STRATEGIES.get(name), limit=args.limit, output=path,
                 resume=args.resume, progress=console_progress,
             )
             reports.append(report)
             print("Полный прогон." if args.limit is None and complete(report) else "Неполный прогон.", flush=True)
+        if args.retrieval_only:
+            summary = summarize(reports[0].rows, evaluator.config.top_k)
+            for name in RETRIEVAL_METRICS:
+                print(f"{metric_label(name, evaluator.config.top_k)} — {summary[name]['mean']} (n={summary[name]['n']})")
         if args.compare:
             rows = save_comparison(folder, *reports)
             for row in rows:
@@ -270,6 +381,9 @@ def main() -> int:
             if conclusion:
                 print(conclusion)
         return int(any(row.errors for report in reports for row in report.rows))
+    except KeyboardInterrupt:
+        print("Прогон прерван. Сохранённые строки можно продолжить через --resume.")
+        return 130
     except Exception as exc:
         print(f"Оценка не выполнена: {describe_error(exc)}")
         return 1

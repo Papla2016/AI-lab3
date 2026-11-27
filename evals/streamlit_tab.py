@@ -6,9 +6,9 @@ import streamlit as st
 from src.error_messages import describe_error
 from src.web_service import RAGLabService
 
-from .eval_gate import check_gate
-from .evaluate import build_evaluator
-from .metrics import METRICS, summarize, unsuccessful
+from .eval_gate import DEFAULT_THRESHOLDS, UPPER_BOUNDS, check_gate
+from .evaluate import build_evaluator, check_api
+from .metrics import METRICS, metric_label, summarize, unsuccessful
 from .reporting import compare, comparison_conclusion, complete, csv_text, report_csv, report_json
 from .schemas import Report, Row, load_dataset
 
@@ -25,6 +25,8 @@ STRATEGIES = {
 
 
 def display_row(row: Row) -> None:
+    if row.router:
+        st.caption(f"Решение маршрутизатора — {row.router}")
     reference, actual = st.columns(2)
     reference.markdown("**Эталонный ответ**")
     reference.text(row.example.ground_truth)
@@ -48,6 +50,9 @@ def display_row(row: Row) -> None:
         st.write(f"Проверка инъекции — {label}. Чанк {row.injection_chunk_id}.")
         if row.injection_answer:
             st.text(row.injection_answer.answer)
+        if row.injection_judge:
+            st.json(row.injection_judge.model_dump(exclude={"justification"}))
+            st.text(row.injection_judge.justification)
     for title, chunks in (
         ("Найденные чанки", row.retrieved), ("Контекст генерации", row.context),
         ("Контекст контролируемой проверки", row.injection_context),
@@ -61,14 +66,16 @@ def display_row(row: Row) -> None:
 
 
 def display_report(label: str, report: Report) -> None:
+    top_k = report.config.top_k
     st.caption(
         f"{'Полный' if complete(report) else 'Неполный'} прогон · "
         f"{len(report.rows)}/{report.dataset_size} вопросов · "
-        f"{report.config.retrieval_mode}, top-k={report.config.top_k} · {report.config.strategy or 'retrieval-only'}"
+        f"{report.config.evaluation_mode} · "
+        f"{report.config.retrieval_mode}, top-k={top_k} · {report.config.strategy or 'retrieval-only'}"
     )
     summary = [
-        {"Метрика": METRICS[key], "Среднее": entry["mean"], "Примеров": entry["n"]}
-        for key, entry in summarize(report.rows).items() if entry["n"]
+        {"Метрика": metric_label(key, top_k), "Среднее": entry["mean"], "Примеров": entry["n"]}
+        for key, entry in summarize(report.rows, top_k).items() if entry["n"]
     ]
     if summary:
         st.dataframe(summary, hide_index=True)
@@ -81,7 +88,7 @@ def display_report(label: str, report: Report) -> None:
     only_failed = st.checkbox("Только неуспешные примеры", key="edd_failed")
     rows = [
         row for row in report.rows
-        if (category is None or row.example.type == category) and (not only_failed or unsuccessful(row))
+        if (category is None or row.example.type == category) and (not only_failed or unsuccessful(row, top_k))
     ]
     if rows:
         names = {f"#{row.example.id} {row.example.question}": row for row in rows}
@@ -128,20 +135,30 @@ def edd_tab(service: RAGLabService) -> None:
     mode = modes[left.selectbox("Режим поиска", list(modes), index=int(settings.retrieval_mode == "hybrid"))]
     top_k = int(right.number_input("Чанков в финальном контексте (top-k)", 1, 100, min(settings.final_k, 100)))
     count = int(left.number_input("Вопросов в прогоне", 1, len(examples), len(examples)))
-    faithfulness = right.number_input("Порог Faithfulness для Regression Gate", 0.0, 1.0, 0.7, 0.05)
+    modes_eval = {"Сравнение промптов": "prompt_comparison", "End-to-end с маршрутизатором": "end_to_end"}
+    evaluation_mode = modes_eval[right.selectbox("Режим оценки", list(modes_eval))]
+    if st.button("Проверить API генерации и judge"):
+        try:
+            with st.spinner("Проверка структурированных ответов…"):
+                check_api(settings)
+            st.success("Генерация и judge вернули валидный JSON.")
+        except Exception as exc:
+            st.error(describe_error(exc))
     st.warning("Полное сравнение требует сотен запросов к LLM. Для проверки настройки выберите меньше вопросов.")
 
-    reports = st.session_state.setdefault("edd_reports", {})
+    reports = st.session_state.setdefault("edd_reports_v2", {})
+    prefix = "end_to_end_" if evaluation_mode == "end_to_end" else ""
+    version_a, version_b = prefix + "version_a", prefix + "version_b"
     labels = st.columns(4)
     command = None
     if labels[0].button("Проверить Retrieval"):
         command = {"retrieval": None}
     if labels[1].button("Запустить оценку A"):
-        command = {"version_a": strategy_a}
+        command = {version_a: strategy_a}
     if labels[2].button("Запустить оценку B"):
-        command = {"version_b": strategy_b}
+        command = {version_b: strategy_b}
     if labels[3].button("Сравнить A и B"):
-        command = {"version_a": strategy_a, "version_b": strategy_b}
+        command = {version_a: strategy_a, version_b: strategy_b}
 
     if command is not None:
         st.session_state.pop("edd_gate_result", None)
@@ -151,7 +168,7 @@ def edd_tab(service: RAGLabService) -> None:
             with st.spinner("Загрузка индекса для оценки…"):
                 evaluator = build_evaluator(
                     settings, examples, retrieval_only="retrieval" in command,
-                    mode=mode, top_k=top_k, service=service,
+                    mode=mode, top_k=top_k, service=service, evaluation_mode=evaluation_mode,
                 )
             for position, (label, strategy) in enumerate(command.items()):
                 def update(current: int, total: int, row: Row) -> None:
@@ -171,8 +188,8 @@ def edd_tab(service: RAGLabService) -> None:
     st.subheader("Результаты")
     if not reports:
         st.info("Оценка ещё не запускалась.")
-    if "version_a" in reports and "version_b" in reports:
-        a, b = reports["version_a"], reports["version_b"]
+    if version_a in reports and version_b in reports:
+        a, b = reports[version_a], reports[version_b]
         try:
             comparison = compare(a, b)
         except ValueError as exc:
@@ -185,16 +202,30 @@ def edd_tab(service: RAGLabService) -> None:
                 st.write(conclusion)
             st.download_button("Скачать сравнение CSV", csv_text(comparison), "comparison.csv", "text/csv")
 
-    report_labels = {"retrieval": "Поиск", "version_a": "Версия A", "version_b": "Версия B"}
+    report_labels = {
+        "retrieval": "Поиск", "version_a": "Промпты — A", "version_b": "Промпты — B",
+        "end_to_end_version_a": "End-to-end — A", "end_to_end_version_b": "End-to-end — B",
+    }
     selected = st.selectbox(
         "Прогон для просмотра и Regression Gate", list(reports), format_func=report_labels.get,
         disabled=not reports,
     )
-    if st.button("Проверить Regression Gate", disabled=not reports) and selected is not None:
-        checks = check_gate(reports[selected], {"faithfulness": faithfulness})
-        st.session_state["edd_gate_result"] = (selected, faithfulness, checks)
+    report = reports.get(selected)
+    gate_k = report.config.top_k if report is not None else top_k
+    thresholds = {}
+    with st.expander("Пороги Regression Gate"):
+        columns = st.columns(3)
+        for position, (name, default) in enumerate(DEFAULT_THRESHOLDS.items()):
+            direction = "максимум" if name in UPPER_BOUNDS else "минимум"
+            thresholds[name] = columns[position % len(columns)].number_input(
+                f"{metric_label(name, gate_k)} — {direction}", 0.0, 1.0, default, 0.05,
+                key=f"edd_threshold_{name}",
+            )
+    if st.button("Проверить Regression Gate", disabled=report is None) and report is not None:
+        checks = check_gate(report, thresholds)
+        st.session_state["edd_gate_result"] = (selected, thresholds, checks)
     gate_result = st.session_state.get("edd_gate_result")
-    if gate_result and gate_result[:2] == (selected, faithfulness):
+    if gate_result and gate_result[:2] == (selected, thresholds):
         checks = gate_result[2]
         if all(check.passed for check in checks):
             st.success("Regression Gate пройден.")
@@ -202,5 +233,5 @@ def edd_tab(service: RAGLabService) -> None:
             st.error("Regression Gate не пройден.")
         for check in checks:
             st.text(check.line())
-    if selected is not None:
-        display_report(selected, reports[selected])
+    if report is not None:
+        display_report(selected, report)

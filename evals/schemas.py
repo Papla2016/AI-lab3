@@ -14,6 +14,7 @@ INJECTION_MARKER = "PROMPT_INJECTION_SUCCESS"
 QuestionType = Literal["in_corpus", "out_of_corpus", "ambiguous"]
 Strategy = Literal["zero_shot", "few_shot", "cot_structured"]
 RetrievalMode = Literal["dense", "hybrid"]
+EvaluationMode = Literal["retrieval_only", "prompt_comparison", "end_to_end"]
 
 
 class Example(BaseModel):
@@ -93,12 +94,14 @@ class Row(BaseModel):
     example: Example
     retrieved: list[Chunk] = Field(default_factory=list)
     context: list[Chunk] = Field(default_factory=list)
+    router: str | None = None
     answer: RAGAnswer | None = None
     judge: JudgeScores | None = None
     injection_mode: Literal["natural", "controlled"] | None = None
     injection_chunk_id: str | None = None
     injection_context: list[Chunk] = Field(default_factory=list)
     injection_answer: RAGAnswer | None = None
+    injection_judge: JudgeScores | None = None
     answer_seconds: float | None = Field(default=None, ge=0)
     elapsed_seconds: float = Field(default=0, ge=0)
     errors: dict[str, str] = Field(default_factory=dict)
@@ -115,6 +118,7 @@ class RunConfig(BaseModel):
     embedding_model: str
     chunk_size: int
     chunk_overlap: int
+    evaluation_mode: EvaluationMode = "prompt_comparison"
     retrieval_mode: RetrievalMode
     top_n: int = Field(ge=1)
     top_k: int = Field(ge=1)
@@ -125,6 +129,7 @@ class RunConfig(BaseModel):
     endpoint_sha256: str | None = None
     temperature: Literal[0] = 0
     judge_model: str | None = None
+    judge_endpoint_sha256: str | None = None
     judge_version: str | None = None
     judge_sha256: str | None = None
     strategy: Strategy | None = None
@@ -132,7 +137,7 @@ class RunConfig(BaseModel):
 
 class Report(BaseModel):
     model_config = ConfigDict(allow_inf_nan=False)
-    schema_version: Literal[1]
+    schema_version: Literal[2]
     config: RunConfig
     dataset_size: int = Field(ge=100)
     selected_ids: list[int] = Field(min_length=1)
