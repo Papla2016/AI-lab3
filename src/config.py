@@ -25,6 +25,9 @@ class Settings(BaseSettings):
     llm_base_url: str = "http://localhost:11434/v1"
     llm_api_key: str = "ollama"
     llm_model: str = "qwen2.5:7b"
+    judge_base_url: str | None = None
+    judge_api_key: str | None = Field(default=None, repr=False)
+    judge_model: str | None = None
 
     @model_validator(mode="after")
     def valid_chunking(self) -> "Settings":

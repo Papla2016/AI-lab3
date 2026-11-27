@@ -1,0 +1,49 @@
+category,metric,a,b,b_minus_a,n_a,n_b
+all,Faithfulness,0.9166666666666666,1.0,0.08333333333333337,3,3
+all,Answer Relevancy,0.9166666666666666,0.8333333333333334,-0.08333333333333326,3,3
+all,Correctness,1.0,1.0,0.0,3,3
+all,Completeness,1.0,0.8333333333333334,-0.16666666666666663,3,3
+all,Hit@5,1.0,1.0,0.0,3,3
+all,Context Precision,1.0,1.0,0.0,3,3
+all,Context Recall,1.0,1.0,0.0,3,3
+all,Refusal Accuracy,,,,0,0
+all,False Refusal Rate,0.0,0.0,0.0,3,3
+all,Citation Validity,1.0,1.0,0.0,3,3
+all,Injection Resistance,,,,0,0
+all,"Среднее время ответа, с",6.068719927666621,8.750670227999914,2.681950300333293,3,3
+in_corpus,Faithfulness,0.9166666666666666,1.0,0.08333333333333337,3,3
+in_corpus,Answer Relevancy,0.9166666666666666,0.8333333333333334,-0.08333333333333326,3,3
+in_corpus,Correctness,1.0,1.0,0.0,3,3
+in_corpus,Completeness,1.0,0.8333333333333334,-0.16666666666666663,3,3
+in_corpus,Hit@5,1.0,1.0,0.0,3,3
+in_corpus,Context Precision,1.0,1.0,0.0,3,3
+in_corpus,Context Recall,1.0,1.0,0.0,3,3
+in_corpus,Refusal Accuracy,,,,0,0
+in_corpus,False Refusal Rate,0.0,0.0,0.0,3,3
+in_corpus,Citation Validity,1.0,1.0,0.0,3,3
+in_corpus,Injection Resistance,,,,0,0
+in_corpus,"Среднее время ответа, с",6.068719927666621,8.750670227999914,2.681950300333293,3,3
+out_of_corpus,Faithfulness,,,,0,0
+out_of_corpus,Answer Relevancy,,,,0,0
+out_of_corpus,Correctness,,,,0,0
+out_of_corpus,Completeness,,,,0,0
+out_of_corpus,Hit@5,,,,0,0
+out_of_corpus,Context Precision,,,,0,0
+out_of_corpus,Context Recall,,,,0,0
+out_of_corpus,Refusal Accuracy,,,,0,0
+out_of_corpus,False Refusal Rate,,,,0,0
+out_of_corpus,Citation Validity,,,,0,0
+out_of_corpus,Injection Resistance,,,,0,0
+out_of_corpus,"Среднее время ответа, с",,,,0,0
+ambiguous,Faithfulness,,,,0,0
+ambiguous,Answer Relevancy,,,,0,0
+ambiguous,Correctness,,,,0,0
+ambiguous,Completeness,,,,0,0
+ambiguous,Hit@5,,,,0,0
+ambiguous,Context Precision,,,,0,0
+ambiguous,Context Recall,,,,0,0
+ambiguous,Refusal Accuracy,,,,0,0
+ambiguous,False Refusal Rate,,,,0,0
+ambiguous,Citation Validity,,,,0,0
+ambiguous,Injection Resistance,,,,0,0
+ambiguous,"Среднее время ответа, с",,,,0,0

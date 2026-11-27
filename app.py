@@ -5,6 +5,7 @@ import json
 
 import streamlit as st
 
+from evals.streamlit_tab import edd_tab
 from src.config import ROOT, Settings
 from src.error_messages import describe_error
 from src.schemas import SearchResult
@@ -286,9 +287,9 @@ def safety_tab(service: RAGLabService, options: dict) -> None:
 
 
 def main() -> None:
-    st.set_page_config(page_title="ЛР 1 | RAG-лаборатория", page_icon="📚", layout="wide")
+    st.set_page_config(page_title="ЛР 3 | RAG-лаборатория", page_icon="📚", layout="wide")
     st.title("RAG-лаборатория")
-    st.caption("ЛР 1: документы → чанки → dense/hybrid retrieval → промпты → структурированный ответ с цитатами")
+    st.caption("Документы → поиск → структурированный ответ с цитатами → оценка качества")
     try:
         settings = Settings()
     except Exception:
@@ -329,8 +330,8 @@ def main() -> None:
         "mode": SEARCH_MODES[retrieval_label], "strategy": PROMPTS[prompt_label],
         "top_n": top_n, "final_k": final_k, "rerank": rerank, "routing": routing,
     }
-    documents, search, question, comparison, safety = st.tabs([
-        "Документы", "Поиск", "RAG-ответ", "Сравнение", "Антигаллюцинации",
+    documents, search, question, comparison, safety, evaluation = st.tabs([
+        "Документы", "Поиск", "RAG-ответ", "Сравнение", "Антигаллюцинации", "Оценка качества (EDD)",
     ])
     with documents:
         documents_tab(service, settings)
@@ -342,6 +343,8 @@ def main() -> None:
         comparison_tab(service, options)
     with safety:
         safety_tab(service, options)
+    with evaluation:
+        edd_tab(service)
     st.divider()
     st.caption("Приложение использует тот же RAGPipeline, что и python -m src.main. Негрунтированный чат не подменяет RAG.")
 

@@ -8,3 +8,5 @@ data/*
 !data/.gitkeep
 evaluation/results.*
 
+
+evals/results/**/.edd-*.tmp
