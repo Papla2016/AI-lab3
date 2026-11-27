@@ -1,0 +1,49 @@
+category,metric,a,b,b_minus_a,n_a,n_b
+all,Faithfulness,0.9925,0.9925,0.0,100,100
+all,Answer Relevancy,0.94,0.94,0.0,100,100
+all,Correctness,0.915,0.92,0.0050000000000000044,100,100
+all,Completeness,0.915,0.92,0.0050000000000000044,100,100
+all,Hit@5,0.9777777777777777,0.9777777777777777,0.0,90,90
+all,Context Precision,0.5096296296296297,0.5096296296296297,0.0,90,90
+all,Context Recall,0.9777777777777777,0.9777777777777777,0.0,90,90
+all,Refusal Accuracy,0.9,1.0,0.09999999999999998,10,10
+all,False Refusal Rate,0.05747126436781609,0.05747126436781609,0.0,87,87
+all,Citation Validity,1.0,1.0,0.0,86,85
+all,Injection Resistance,1.0,1.0,0.0,4,4
+all,"Среднее время ответа, с",2.599247103630006,2.5007067752399803,-0.09854032839002569,100,100
+in_corpus,Faithfulness,0.9913793103448276,0.9913793103448276,0.0,87,87
+in_corpus,Answer Relevancy,0.9540229885057471,0.9540229885057471,0.0,87,87
+in_corpus,Correctness,0.9195402298850575,0.9252873563218391,0.005747126436781658,87,87
+in_corpus,Completeness,0.9195402298850575,0.9252873563218391,0.005747126436781658,87,87
+in_corpus,Hit@5,0.9770114942528736,0.9770114942528736,0.0,87,87
+in_corpus,Context Precision,0.5061302681992337,0.5061302681992337,0.0,87,87
+in_corpus,Context Recall,0.9770114942528736,0.9770114942528736,0.0,87,87
+in_corpus,Refusal Accuracy,,,,0,0
+in_corpus,False Refusal Rate,0.05747126436781609,0.05747126436781609,0.0,87,87
+in_corpus,Citation Validity,1.0,1.0,0.0,82,82
+in_corpus,Injection Resistance,1.0,1.0,0.0,4,4
+in_corpus,"Среднее время ответа, с",2.6075507111839116,2.371709032563203,-0.2358416786207087,87,87
+out_of_corpus,Faithfulness,1.0,1.0,0.0,10,10
+out_of_corpus,Answer Relevancy,1.0,1.0,0.0,10,10
+out_of_corpus,Correctness,1.0,1.0,0.0,10,10
+out_of_corpus,Completeness,1.0,1.0,0.0,10,10
+out_of_corpus,Hit@5,,,,0,0
+out_of_corpus,Context Precision,,,,0,0
+out_of_corpus,Context Recall,,,,0,0
+out_of_corpus,Refusal Accuracy,0.9,1.0,0.09999999999999998,10,10
+out_of_corpus,False Refusal Rate,,,,0,0
+out_of_corpus,Citation Validity,1.0,,,1,0
+out_of_corpus,Injection Resistance,,,,0,0
+out_of_corpus,"Среднее время ответа, с",2.689498232400024,3.7316051630999025,1.0421069306998785,10,10
+ambiguous,Faithfulness,1.0,1.0,0.0,3,3
+ambiguous,Answer Relevancy,0.3333333333333333,0.3333333333333333,0.0,3,3
+ambiguous,Correctness,0.5,0.5,0.0,3,3
+ambiguous,Completeness,0.5,0.5,0.0,3,3
+ambiguous,Hit@5,1.0,1.0,0.0,3,3
+ambiguous,Context Precision,0.611111111111111,0.611111111111111,0.0,3,3
+ambiguous,Context Recall,1.0,1.0,0.0,3,3
+ambiguous,Refusal Accuracy,,,,0,0
+ambiguous,False Refusal Rate,,,,0,0
+ambiguous,Citation Validity,1.0,1.0,0.0,3,3
+ambiguous,Injection Resistance,,,,0,0
+ambiguous,"Среднее время ответа, с",2.057605388666692,2.138646686666789,0.08104129800009696,3,3
