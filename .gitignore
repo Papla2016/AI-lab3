@@ -8,3 +8,6 @@ data/*
 !data/.gitkeep
 evaluation/results.*
 
+
+evals/results/*
+!evals/results/.gitkeep
